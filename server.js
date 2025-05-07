@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const logger = require('./src/utils/logger');
+const cloudinary = require('cloudinary').v2;
 
 // Crear la aplicación Express
 const app = express();
@@ -17,6 +18,13 @@ const redis = new Redis(process.env.REDIS_URL);
 
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
+
+// Configurar Cloudinary
+cloudinary.config({
+    cloud_name: 'oBJETIVO',
+    api_key: '923819445393189',
+    api_secret: 'DQQNL71Pz-bdlaNIBsO5iuaAsKM',
+});
 
 // Función para cerrar la aplicación gracefully
 async function gracefulShutdown(signal) {
@@ -157,7 +165,7 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         const messageData = {
             user_id,
             chatbot_id,
-            message: message || '', // Permitir mensaje vacío
+            message: message || '',
             timestamp: timestamp || new Date().toISOString(),
             processed: false,
             bundled: false,
@@ -165,12 +173,23 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         };
 
         if (req.file) {
+            // Subir archivo a Cloudinary
+            const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+                resource_type: req.file.mimetype.startsWith('audio/') ? 'video' : 'image',
+                folder: 'chatbot_uploads',
+                use_filename: true,
+                unique_filename: false,
+                overwrite: true
+            });
             messageData.file = {
                 filename: req.file.filename,
-                path: req.file.path,
+                url: uploadResult.secure_url,
                 mimetype: req.file.mimetype,
-                size: req.file.size
+                size: req.file.size,
+                cloudinary_public_id: uploadResult.public_id
             };
+            // Eliminar archivo local después de subirlo
+            fs.unlinkSync(req.file.path);
         }
         
         // Almacenar el mensaje en Redis con expiración de 5 minutos
@@ -180,7 +199,8 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         res.status(200).json({
             success: true,
             message: "✓",
-            key: messageKey
+            key: messageKey,
+            fileUrl: messageData.file ? messageData.file.url : null
         });
     } catch (error) {
         logger.error('Error procesando mensaje:', error);
