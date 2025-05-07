@@ -320,7 +320,8 @@ async function createMessageBundles() {
                         message.bundled = true;
                         await redis.setex(key, 300, JSON.stringify(message));
                         
-                        messagesByUserChatbot[userChatbotKey].messages.push(message.message);
+                        // CAMBIO: Agregar el objeto completo del mensaje, no solo el texto
+                        messagesByUserChatbot[userChatbotKey].messages.push(message);
                         messagesByUserChatbot[userChatbotKey].keys.push(key);
                     } else {
                         logger.info(`⏳ Esperando ${((20000 - timeElapsed)/1000).toFixed(1)} segundos más para el usuario ${userId} y chatbot ${chatbotId}`);
