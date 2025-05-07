@@ -21,7 +21,7 @@ const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots
 
 // Configurar Cloudinary
 cloudinary.config({
-    cloud_name: 'oBJETIVO',
+    cloud_name: 'Objetivo',
     api_key: '923819445393189',
     api_secret: 'DQQNL71Pz-bdlaNIBsO5iuaAsKM',
 });
