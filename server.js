@@ -13,7 +13,7 @@ const app = express();
 let server = null;
 
 // Configuración de Redis
-const redis = new Redis();
+const redis = new Redis(process.env.REDIS_URL);
 
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
