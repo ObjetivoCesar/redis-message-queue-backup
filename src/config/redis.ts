@@ -5,7 +5,7 @@ import { RedisConfig } from '../types';
 dotenv.config();
 
 const config: RedisConfig = {
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  url: process.env.REDIS_URL || '',
   bufferTime: parseInt(process.env.BUFFER_TIME || '20', 10)
 };
 
