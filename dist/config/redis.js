@@ -8,7 +8,7 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const config = {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL,
     bufferTime: parseInt(process.env.BUFFER_TIME || '20', 10)
 };
 exports.config = config;
