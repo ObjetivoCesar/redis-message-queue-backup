@@ -1,0 +1,17 @@
+{
+  "chatbot-1": {
+    "webhook": "https://hook.us2.make.com/4x8hb3vrhe7u0bh6r9ix1ifn5zcnn2ri",
+    "name": "Chatbot de Prueba 1",
+    "description": "Chatbot de demostración"
+  },
+  "chatbot-2": {
+    "webhook": "https://hook.us2.make.com/vy46yk4a2c202wnyyma2n78v4id4hb2h",
+    "name": "Chatbot de Prueba 2",
+    "description": "Segundo chatbot de demostración"
+  },
+  "chatbot-4": {
+    "webhook": "https://hook.us2.make.com/pt9dv8zy1byhg9e8jj2nu4g79th1ewk9",
+    "name": "chatbot_objetivo",
+    "description": "Cuarto Chatbot objetivo"
+  }
+}

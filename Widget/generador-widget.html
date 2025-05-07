@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Widget Chatbot</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #0001; padding: 32px; }
+    h1 { text-align: center; color: #e5993b; }
+    label { display: block; margin-top: 18px; font-weight: bold; }
+    input, textarea, select { width: 100%; padding: 8px; margin-top: 4px; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; }
+    .row { display: flex; gap: 16px; }
+    .row > div { flex: 1; }
+    .logo-preview { text-align: center; margin: 20px 0; }
+    .logo-preview img { max-width: 180px; max-height: 80px; }
+    .actions { margin-top: 24px; text-align: center; }
+    button { background: #e5993b; color: #fff; border: none; border-radius: 5px; padding: 10px 24px; font-size: 1em; cursor: pointer; margin: 0 8px; }
+    button:active { background: #c97d1a; }
+    .code-area { width: 100%; height: 220px; margin-top: 18px; font-family: monospace; font-size: 0.95em; background: #f4f4f4; border: 1px solid #ccc; border-radius: 6px; padding: 12px; }
+    .success { color: #4CAF50; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Generador de Widget Chatbot</h1>
+    <div class="logo-preview">
+      <img src="/Widget/logo-obj.png" alt="Logo" />
+    </div>
+    <form id="widgetForm">
+      <div class="row">
+        <div>
+          <label for="chatbotId">chatbotId</label>
+          <input type="text" id="chatbotId" name="chatbotId" value="chatbot-NEW" required />
+        </div>
+        <div>
+          <label for="chatTitle">Título del chat</label>
+          <input type="text" id="chatTitle" name="chatTitle" value="Chat de Soporte" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="primaryColor">Color principal</label>
+          <input type="color" id="primaryColor" name="primaryColor" value="#e5993b" />
+        </div>
+        <div>
+          <label for="secondaryColor">Color secundario</label>
+          <input type="color" id="secondaryColor" name="secondaryColor" value="#f0f0f0" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="textColorUser">Color texto usuario</label>
+          <input type="color" id="textColorUser" name="textColorUser" value="#ffffff" />
+        </div>
+        <div>
+          <label for="textColorBot">Color texto bot</label>
+          <input type="color" id="textColorBot" name="textColorBot" value="#333333" />
+        </div>
+      </div>
+      <label for="initialMessage">Mensaje inicial</label>
+      <input type="text" id="initialMessage" name="initialMessage" value="¡Hola! 👋 ¿En qué puedo ayudarte hoy?" />
+      <label for="formButtonText">Texto botón formulario</label>
+      <input type="text" id="formButtonText" name="formButtonText" value="Formulario de Contacto" />
+      <label for="submitButtonText">Texto botón enviar</label>
+      <input type="text" id="submitButtonText" name="submitButtonText" value="Enviar" />
+      <label for="chatWebhookUrl">URL del backend (chatWebhookUrl)</label>
+      <input type="text" id="chatWebhookUrl" name="chatWebhookUrl" value="http://localhost:3001/api/messages" required />
+      <label for="webhook">Nuevo Webhook (Make, etc)</label>
+      <input type="text" id="webhook" name="webhook" placeholder="https://hook.us2.make.com/xxxx" required />
+      <div class="actions">
+        <button type="button" onclick="guardarWebhook()">Guardar Webhook</button>
+        <button type="button" onclick="generarCodigo()">Generar Código</button>
+        <button type="button" onclick="descargarCodigo()">Descargar HTML</button>
+      </div>
+      <div id="successMsg" class="success"></div>
+      <label for="codigoGenerado">Código HTML generado:</label>
+      <textarea id="codigoGenerado" class="code-area" readonly></textarea>
+    </form>
+  </div>
+  <script>
+    // Simulación de guardar el webhook en un JSON local (solo para frontend)
+    function guardarWebhook() {
+      const chatbotId = document.getElementById('chatbotId').value.trim();
+      const webhook = document.getElementById('webhook').value.trim();
+      if (!chatbotId || !webhook) {
+        alert('Debes ingresar el chatbotId y el webhook.');
+        return;
+      }
+      let chatbots = JSON.parse(localStorage.getItem('chatbots-json') || '{}');
+      chatbots[chatbotId] = { webhook };
+      localStorage.setItem('chatbots-json', JSON.stringify(chatbots, null, 2));
+      document.getElementById('successMsg').textContent = 'Webhook guardado localmente (simulado).';
+      setTimeout(()=>{ document.getElementById('successMsg').textContent = ''; }, 2000);
+    }
+
+    function generarCodigo() {
+      const chatbotId = document.getElementById('chatbotId').value.trim();
+      const chatTitle = document.getElementById('chatTitle').value.trim();
+      const primaryColor = document.getElementById('primaryColor').value;
+      const secondaryColor = document.getElementById('secondaryColor').value;
+      const textColorUser = document.getElementById('textColorUser').value;
+      const textColorBot = document.getElementById('textColorBot').value;
+      const initialMessage = document.getElementById('initialMessage').value.trim();
+      const formButtonText = document.getElementById('formButtonText').value.trim();
+      const submitButtonText = document.getElementById('submitButtonText').value.trim();
+      const chatWebhookUrl = document.getElementById('chatWebhookUrl').value.trim();
+      // Logo fijo (puedes cambiar la ruta si lo mueves)
+      const logoHTML = '<div style="text-align:center;margin-bottom:10px;"><img src="/Widget/logo-obj.png" alt="Logo" style="max-width:120px;max-height:50px;"/></div>';
+      const widgetHTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot Widget</title>
+</head>
+<body>
+${logoHTML}
+<!-- Aquí va el código del widget generado -->
+<script>
+(function() {
+  const config = {
+    prefix: '${chatbotId}-',
+    primaryColor: '${primaryColor}',
+    secondaryColor: '${secondaryColor}',
+    textColorUser: '${textColorUser}',
+    textColorBot: '${textColorBot}',
+    chatTitle: '${chatTitle}',
+    formButtonText: '${formButtonText}',
+    submitButtonText: '${submitButtonText}',
+    chatbotId: '${chatbotId}',
+    chatWebhookUrl: '${chatWebhookUrl}',
+    initialMessage: "${initialMessage.replace(/"/g, '\"')}"
+  };
+  // ... aquí va el resto del código JS del widget ...
+})();
+<\/script>
+</body>
+</html>`;
+      document.getElementById('codigoGenerado').value = widgetHTML;
+    }
+
+    function descargarCodigo() {
+      generarCodigo();
+      const codigo = document.getElementById('codigoGenerado').value;
+      const blob = new Blob([codigo], {type: 'text/html'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'widget-chatbot.html';
+      a.click();
+    }
+  </script>
+</body>
+</html> 
