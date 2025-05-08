@@ -8,7 +8,7 @@ const config = {
     formButtonText: 'Formulario',
     submitButtonText: 'Enviar Información',
     chatbotId: 'chatbot-1',
-    chatWebhookUrl: 'http://localhost:3001/api/messages'
+    chatWebhookUrl: 'https://redis-message-queue-backup.onrender.com/api/messages'
 };
 
 export default config; 
