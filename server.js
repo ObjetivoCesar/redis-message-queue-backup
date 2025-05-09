@@ -7,24 +7,55 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const logger = require('./src/utils/logger');
+require('dotenv').config();
+const cron = require('node-cron');
+const basicAuth = require('basic-auth');
+
+// Configuración de Cloudinary
 const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configuración de almacenamiento en Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'chatbot-uploads',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp3', 'wav'],
+        resource_type: 'auto'
+    }
+});
+
+// Configuración de Multer con Cloudinary
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // límite de 10MB
+    },
+    fileFilter: function (req, file, cb) {
+        // Permitir solo imágenes y audio
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten archivos de imagen y audio'));
+        }
+    }
+});
 
 // Crear la aplicación Express
 const app = express();
 let server = null;
 
 // Configuración de Redis
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis();
 
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
-
-// Configurar Cloudinary
-cloudinary.config({
-    cloud_name: 'Objetivo',
-    api_key: '923819445393189',
-    api_secret: 'DQQNL71Pz-bdlaNIBsO5iuaAsKM',
-});
 
 // Función para cerrar la aplicación gracefully
 async function gracefulShutdown(signal) {
@@ -56,52 +87,26 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Configuración de Multer para manejo de archivos
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'uploads';
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir);
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // límite de 10MB
-    },
-    fileFilter: function (req, file, cb) {
-        // Permitir solo imágenes y audio
-        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Solo se permiten archivos de imagen y audio'));
-        }
-    }
-});
-
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 app.use('/Widget', express.static('Widget'));
 
-// Auto-ping para mantener el servicio activo (cada 14 minutos y 50 segundos)
-setInterval(() => {
-    const http = require('http');
-    const url = 'http://localhost:' + (process.env.PORT || 3001);
+const adminUser = process.env.ADMIN_USER || 'Gestor';
+const adminPass = process.env.ADMIN_PASS || 'P@rcekiller';
 
-    http.get(url, (res) => {
-        logger.info('Auto-ping enviado para mantener el servicio activo. Status:', res.statusCode);
-    }).on('error', (e) => {
-        logger.error('Error en auto-ping:', e.message);
-    });
-}, 890 * 1000); // Cada 14 minutos y 50 segundos
+function auth(req, res, next) {
+    const user = basicAuth(req);
+    if (!user || user.name !== adminUser || user.pass !== adminPass) {
+        res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+        return res.status(401).send('Authentication required.');
+    }
+    next();
+}
+
+// Proteger el panel de administración y endpoints de gestión de chatbots
+app.use(['/admin', '/api/chatbots', '/api/chatbots/:id'], auth);
 
 // Servir el panel de administración
 app.get('/admin', (req, res) => {
@@ -130,6 +135,8 @@ app.use((req, res, next) => {
 
 // Ruta para recibir mensajes
 app.post('/api/messages', upload.single('file'), async (req, res) => {
+    console.log('DEBUG req.file:', req.file);
+    console.log('DEBUG req.body:', req.body);
     try {
         const { user_id, message, timestamp, chatbot_id } = req.body;
         
@@ -149,7 +156,7 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
             });
         }
 
-        logger.info('Mensaje recibido', { user_id, chatbot_id, message, timestamp, file: req.file?.filename });
+        logger.info('Mensaje recibido', { user_id, chatbot_id, message, timestamp, file: req.file?.path });
         
         // Registrar el tiempo del primer mensaje si no existe
         const userChatbotKey = `${user_id}:${chatbot_id}`;
@@ -165,7 +172,7 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         const messageData = {
             user_id,
             chatbot_id,
-            message: message || '',
+            message: message || '', // Permitir mensaje vacío
             timestamp: timestamp || new Date().toISOString(),
             processed: false,
             bundled: false,
@@ -173,23 +180,11 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         };
 
         if (req.file) {
-            // Subir archivo a Cloudinary
-            const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-                resource_type: req.file.mimetype.startsWith('audio/') ? 'video' : 'image',
-                folder: 'chatbot_uploads',
-                use_filename: true,
-                unique_filename: false,
-                overwrite: true
-            });
             messageData.file = {
-                filename: req.file.filename,
-                url: uploadResult.secure_url,
+                url: req.file.path || req.file.url || req.file.secure_url, // Asegura la URL pública
                 mimetype: req.file.mimetype,
-                size: req.file.size,
-                cloudinary_public_id: uploadResult.public_id
+                size: req.file.size
             };
-            // Eliminar archivo local después de subirlo
-            fs.unlinkSync(req.file.path);
         }
         
         // Almacenar el mensaje en Redis con expiración de 5 minutos
@@ -199,14 +194,15 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         res.status(200).json({
             success: true,
             message: "✓",
-            key: messageKey,
-            fileUrl: messageData.file ? messageData.file.url : null
+            key: messageKey
         });
     } catch (error) {
+        console.error('ERROR EN /api/messages:', error);
         logger.error('Error procesando mensaje:', error);
         res.status(500).json({
             success: false,
-            error: 'Error interno del servidor'
+            error: 'Error interno del servidor',
+            details: error.message || error
         });
     }
 });
@@ -308,6 +304,7 @@ async function createMessageBundles() {
                         if (!messagesByUserChatbot[userChatbotKey]) {
                             messagesByUserChatbot[userChatbotKey] = {
                                 messages: [],
+                                files: [],
                                 keys: [],
                                 firstMessageTime: firstMessageTime,
                                 userId: userId,
@@ -320,8 +317,10 @@ async function createMessageBundles() {
                         message.bundled = true;
                         await redis.setex(key, 300, JSON.stringify(message));
                         
-                        // Solo agregar el texto del mensaje al bundle
                         messagesByUserChatbot[userChatbotKey].messages.push(message.message);
+                        if (message.file) {
+                            messagesByUserChatbot[userChatbotKey].files.push(message.file);
+                        }
                         messagesByUserChatbot[userChatbotKey].keys.push(key);
                     } else {
                         logger.info(`⏳ Esperando ${((20000 - timeElapsed)/1000).toFixed(1)} segundos más para el usuario ${userId} y chatbot ${chatbotId}`);
@@ -353,6 +352,7 @@ async function createMessageBundles() {
                             user_id: bundle.userId,
                             chatbot_id: bundle.chatbotId,
                             messages: bundle.messages,
+                            files: bundle.files,
                             bundle_size: bundle.messages.length,
                             timestamp: new Date().toISOString(),
                             total_wait_time: (Date.now() - bundle.firstMessageTime) / 1000
@@ -485,6 +485,26 @@ app.delete('/api/chatbots/:id', (req, res) => {
         logger.error('Error al eliminar chatbot:', error);
         res.status(500).json({ error: 'Error al eliminar el chatbot' });
     }
+});
+
+// Tarea programada para borrar archivos de Cloudinary diariamente a las 3:00 AM
+cron.schedule('0 3 * * *', async () => {
+    try {
+        const result = await cloudinary.api.delete_resources_by_prefix('chatbot-uploads/');
+        logger.info('Archivos de Cloudinary eliminados diariamente:', result);
+    } catch (error) {
+        logger.error('Error al eliminar archivos de Cloudinary:', error);
+    }
+});
+
+// Middleware de manejo de errores para Multer y otros
+app.use((err, req, res, next) => {
+    console.error('ERROR GLOBAL:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor (middleware global)',
+        details: err.message || err
+    });
 });
 
 // Iniciar el servidor con manejo de errores mejorado
