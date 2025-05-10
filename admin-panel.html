@@ -190,7 +190,7 @@
                 description: document.getElementById('description').value
             };
             try {
-                const response = await fetch('http://localhost:3001/api/chatbots', {
+                const response = await fetch('/api/chatbots', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(chatbotData)
@@ -211,7 +211,7 @@
         // Chatbots List
         async function loadChatbots() {
             try {
-                const response = await fetch('http://localhost:3001/api/chatbots');
+                const response = await fetch('/api/chatbots');
                 const chatbots = await response.json();
                 const chatbotsList = document.getElementById('chatbotsList');
                 chatbotsList.innerHTML = '';
@@ -238,7 +238,7 @@
                 const id = e.target.getAttribute('data-id');
                 if (confirm('¿Estás seguro de que deseas eliminar este chatbot?')) {
                     try {
-                        const response = await fetch(`http://localhost:3001/api/chatbots/${id}`, { method: 'DELETE' });
+                        const response = await fetch(`/api/chatbots/${id}`, { method: 'DELETE' });
                         if (response.ok) {
                             showMessage('Chatbot eliminado exitosamente');
                             loadChatbots();
