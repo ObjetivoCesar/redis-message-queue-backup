@@ -88,7 +88,12 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['https://cdpn.io', 'https://codepen.io', 'http://localhost:3001', 'https://redis-message-queue-backup.onrender.com'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 app.use('/Widget', express.static('Widget'));
@@ -218,13 +223,86 @@ if (adminPanelEnabled) {
 
 // Ruta para recibir mensajes
 app.post('/api/messages', upload.single('file'), async (req, res) => {
-    // ... (igual que antes)
-    // Puedes dejar aquí el código de mensajes, no depende del panel
+    try {
+        const { user_id, chatbot_id, message, timestamp } = req.body;
+        const file = req.file;
+
+        // Validar datos requeridos
+        if (!user_id || !chatbot_id || !message) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Faltan datos requeridos' 
+            });
+        }
+
+        // Crear objeto de mensaje
+        const messageData = {
+            user_id,
+            chatbot_id,
+            message,
+            timestamp: timestamp || new Date().toISOString(),
+            file: file ? {
+                url: file.path,
+                type: file.mimetype,
+                size: file.size
+            } : null
+        };
+
+        // Guardar mensaje en Redis
+        await redis.lpush(`messages:${chatbot_id}:${user_id}`, JSON.stringify(messageData));
+        
+        // Establecer tiempo de expiración (24 horas)
+        await redis.expire(`messages:${chatbot_id}:${user_id}`, 24 * 60 * 60);
+
+        logger.info('Mensaje guardado en Redis:', messageData);
+
+        res.json({ 
+            success: true, 
+            message: 'Mensaje recibido correctamente',
+            data: messageData
+        });
+    } catch (error) {
+        logger.error('Error al procesar mensaje:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error al procesar el mensaje',
+            details: error.message 
+        });
+    }
 });
 
 // Nueva ruta para verificar el estado de los mensajes
 app.get('/api/messages/status', async (req, res) => {
-    // ... (igual que antes)
+    try {
+        const { user_id, chatbot_id } = req.query;
+        
+        if (!user_id || !chatbot_id) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Se requieren user_id y chatbot_id' 
+            });
+        }
+
+        const messages = await redis.lrange(`messages:${chatbot_id}:${user_id}`, 0, -1);
+        const parsedMessages = messages.map(msg => JSON.parse(msg));
+
+        res.json({ 
+            success: true, 
+            status: 'ok',
+            message: 'API de mensajes funcionando correctamente',
+            data: {
+                messageCount: parsedMessages.length,
+                messages: parsedMessages
+            }
+        });
+    } catch (error) {
+        logger.error('Error al obtener estado de mensajes:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error al obtener estado de mensajes',
+            details: error.message 
+        });
+    }
 });
 
 // Función para agrupar mensajes por usuario y chatbot
