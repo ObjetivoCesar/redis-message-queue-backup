@@ -8,5 +8,10 @@
     "webhook": "https://hook.us2.make.com/uv54rz61icbhw1colpy1xgpbrgoyjoda",
     "name": "Sara",
     "description": "Asistente de Topdent"
+  },
+  "chatbot-objetivo": {
+    "webhook": "https://hook.us2.make.com/vy46yk4a2c202wnyyma2n78v4id4hb2h",
+    "name": "Ale",
+    "description": "Asistente de Objetivo"
   }
 }
