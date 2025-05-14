@@ -54,6 +54,15 @@ let server = null;
 // Configuración de Redis
 const redis = new Redis(process.env.REDIS_URL);
 
+// Verificar conexión Redis al inicio
+redis.on('connect', () => {
+    logger.info('Conexión a Redis establecida correctamente');
+});
+
+redis.on('error', (err) => {
+    logger.error('Error de conexión a Redis:', err);
+});
+
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
 
@@ -235,6 +244,14 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
             });
         }
 
+        // Verificar que el chatbot existe
+        if (!chatbotsConfig[chatbot_id]) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chatbot no encontrado'
+            });
+        }
+
         // Crear objeto de mensaje
         const messageData = {
             user_id,
@@ -249,12 +266,31 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
         };
 
         // Guardar mensaje en Redis
-        await redis.lpush(`messages:${chatbot_id}:${user_id}`, JSON.stringify(messageData));
+        const key = `messages:${chatbot_id}:${user_id}`;
+        await redis.lpush(key, JSON.stringify(messageData));
         
         // Establecer tiempo de expiración (24 horas)
-        await redis.expire(`messages:${chatbot_id}:${user_id}`, 24 * 60 * 60);
+        await redis.expire(key, 24 * 60 * 60);
 
         logger.info('Mensaje guardado en Redis:', messageData);
+
+        // Enviar mensaje a Make.com inmediatamente
+        try {
+            const webhookUrl = chatbotsConfig[chatbot_id].webhook;
+            const makeResponse = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(messageData)
+            });
+
+            if (!makeResponse.ok) {
+                logger.error('Error al enviar mensaje a Make.com:', await makeResponse.text());
+            }
+        } catch (error) {
+            logger.error('Error al enviar mensaje a Make.com:', error);
+        }
 
         res.json({ 
             success: true, 
@@ -271,7 +307,7 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
     }
 });
 
-// Nueva ruta para verificar el estado de los mensajes
+// Ruta para verificar el estado de los mensajes
 app.get('/api/messages/status', async (req, res) => {
     try {
         const { user_id, chatbot_id } = req.query;
@@ -283,7 +319,8 @@ app.get('/api/messages/status', async (req, res) => {
             });
         }
 
-        const messages = await redis.lrange(`messages:${chatbot_id}:${user_id}`, 0, -1);
+        const key = `messages:${chatbot_id}:${user_id}`;
+        const messages = await redis.lrange(key, 0, -1);
         const parsedMessages = messages.map(msg => JSON.parse(msg));
 
         res.json({ 
@@ -305,23 +342,42 @@ app.get('/api/messages/status', async (req, res) => {
     }
 });
 
-// Función para agrupar mensajes por usuario y chatbot
-async function createMessageBundles() {
-    // ... (igual que antes)
-}
-
-// Ejecutar el procesador de bundles cada 5 segundos
-const BUNDLE_INTERVAL = 5000; // 5 segundos para revisar más frecuentemente
-logger.info(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BUNDLE_INTERVAL/1000} segundos`);
-setInterval(createMessageBundles, BUNDLE_INTERVAL);
-
-// Tarea programada para borrar archivos de Cloudinary diariamente a las 3:00 AM
-cron.schedule('0 3 * * *', async () => {
+// Endpoint para probar webhooks
+app.post('/api/test-webhook', async (req, res) => {
     try {
-        const result = await cloudinary.api.delete_resources_by_prefix('chatbot-uploads/');
-        logger.info('Archivos de Cloudinary eliminados diariamente:', result);
+        const { chatbot_id } = req.body;
+        const chatbot = chatbotsConfig[chatbot_id];
+        
+        if (!chatbot || !chatbot.webhook) {
+            return res.status(404).json({
+                success: false,
+                error: 'Chatbot no encontrado'
+            });
+        }
+
+        const testResponse = await fetch(chatbot.webhook, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                test: true,
+                timestamp: new Date().toISOString()
+            })
+        });
+
+        res.json({
+            success: true,
+            status: testResponse.status,
+            message: 'Webhook probado correctamente'
+        });
     } catch (error) {
-        logger.error('Error al eliminar archivos de Cloudinary:', error);
+        logger.error('Error al probar webhook:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error al probar webhook',
+            details: error.message
+        });
     }
 });
 
