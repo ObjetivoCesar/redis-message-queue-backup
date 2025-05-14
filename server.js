@@ -52,16 +52,7 @@ const app = express();
 let server = null;
 
 // Configuración de Redis
-const redis = new Redis(process.env.REDIS_URL);
-
-// Verificar conexión Redis al inicio
-redis.on('connect', () => {
-    logger.info('Conexión a Redis establecida correctamente');
-});
-
-redis.on('error', (err) => {
-    logger.error('Error de conexión a Redis:', err);
-});
+const redis = new Redis();
 
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
@@ -97,27 +88,31 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Middleware
-app.use(cors({
-    origin: ['https://cdpn.io', 'https://codepen.io', 'http://localhost:3001', 'https://redis-message-queue-backup.onrender.com'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 app.use('/Widget', express.static('Widget'));
 
-const adminUser = process.env.ADMIN_USER || 'Gestor';
-const adminPass = process.env.ADMIN_PASS || 'P@rcekiller';
-
-function auth(req, res, next) {
+function adminAuth(req, res, next) {
     const user = basicAuth(req);
+    const adminUser = process.env.ADMIN_USER;
+    const adminPass = process.env.ADMIN_PASS;
     if (!user || user.name !== adminUser || user.pass !== adminPass) {
         res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
-        return res.status(401).send('Authentication required.');
+        return res.status(401).send('Acceso restringido');
     }
     next();
 }
+
+// Proteger el panel de administración y endpoints de gestión de chatbots
+app.use(['/admin', '/api/chatbots', '/api/chatbots/:id'], adminAuth);
+
+// Servir el panel de administración
+app.get('/admin', (req, res) => {
+    const adminPath = path.resolve(__dirname, 'admin-panel.html');
+    logger.info(`[ADMIN] Intentando servir: ${adminPath}`);
+    res.sendFile(adminPath);
+});
 
 // Variable para rastrear el tiempo del primer mensaje por usuario y chatbot
 const userFirstMessageTime = new Map();
@@ -137,19 +132,280 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- RUTAS DEL PANEL DE ADMINISTRACIÓN SOLO SI ADMIN_PANEL_ENABLED=true ---
-const adminPanelEnabled = process.env.ADMIN_PANEL_ENABLED === 'true';
+// Ruta para recibir mensajes
+app.post('/api/messages', upload.single('file'), async (req, res) => {
+    console.log('DEBUG req.file:', req.file);
+    console.log('DEBUG req.body:', req.body);
+    try {
+        const { user_id, message, timestamp, chatbot_id } = req.body;
+        
+        // Validaciones básicas
+        if (!user_id || !chatbot_id) {
+            return res.status(400).json({
+                success: false,
+                error: 'Se requieren user_id y chatbot_id'
+            });
+        }
 
-if (adminPanelEnabled) {
-    // Proteger el panel de administración y endpoints de gestión de chatbots
-    app.use(['/admin', '/api/chatbots', '/api/chatbots/:id'], auth);
+        // Verificar si el chatbot existe
+        if (!chatbotsConfig[chatbot_id]) {
+            return res.status(400).json({
+                success: false,
+                error: 'Chatbot no encontrado'
+            });
+        }
 
-    // Servir el panel de administración
-    app.get('/admin', (req, res) => {
-        const adminPath = path.resolve(__dirname, 'admin-panel.html');
-        logger.info(`[ADMIN] Intentando servir: ${adminPath}`);
-        res.sendFile(adminPath);
-    });
+        logger.info('Mensaje recibido', { user_id, chatbot_id, message, timestamp, file: req.file?.path });
+        
+        // Registrar el tiempo del primer mensaje si no existe
+        const userChatbotKey = `${user_id}:${chatbot_id}`;
+        if (!userFirstMessageTime.has(userChatbotKey)) {
+            userFirstMessageTime.set(userChatbotKey, Date.now());
+            logger.info('Iniciando temporizador para usuario y chatbot', { user_id, chatbot_id });
+        }
+        
+        // Crear una clave única para el mensaje
+        const messageKey = `message:${chatbot_id}:${user_id}:${Date.now()}`;
+        
+        // Preparar el mensaje con información del archivo si existe
+        const messageData = {
+            user_id,
+            chatbot_id,
+            message: message || '', // Permitir mensaje vacío
+            timestamp: timestamp || new Date().toISOString(),
+            processed: false,
+            bundled: false,
+            first_message_time: userFirstMessageTime.get(userChatbotKey)
+        };
+
+        if (req.file) {
+            messageData.file = {
+                url: req.file.path || req.file.url || req.file.secure_url, // Asegura la URL pública
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            };
+        }
+        
+        // Almacenar el mensaje en Redis con expiración de 5 minutos
+        await redis.setex(messageKey, 300, JSON.stringify(messageData));
+        logger.info('Mensaje almacenado en Redis', { messageKey });
+        
+        res.status(200).json({
+            success: true,
+            message: "✓",
+            key: messageKey
+        });
+    } catch (error) {
+        console.error('ERROR EN /api/messages:', error);
+        logger.error('Error procesando mensaje:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error interno del servidor',
+            details: error.message || error
+        });
+    }
+});
+
+// Nueva ruta para verificar el estado de los mensajes
+app.get('/api/messages/status', async (req, res) => {
+    try {
+        const { user_id, chatbot_id } = req.query;
+        if (!user_id || !chatbot_id) {
+            return res.status(400).json({ error: 'Se requieren user_id y chatbot_id' });
+        }
+
+        // Buscar mensajes del usuario y chatbot específico
+        const messageKeys = await redis.keys(`message:${chatbot_id}:${user_id}:*`);
+        const responseKeys = await redis.keys(`response:${chatbot_id}:${user_id}:*`);
+        let allProcessed = true;
+        let makeResponse = null;
+        let responseFound = false;
+
+        // Verificar si hay mensajes sin procesar
+        for (const key of messageKeys) {
+            const messageData = await redis.get(key);
+            if (messageData) {
+                const message = JSON.parse(messageData);
+                if (!message.processed) {
+                    allProcessed = false;
+                    break;
+                }
+            }
+        }
+
+        // Buscar SOLO la respuesta más reciente
+        if (responseKeys.length > 0) {
+            // Ordenar las claves por timestamp
+            responseKeys.sort((a, b) => {
+                const timestampA = parseInt(a.split(':').pop());
+                const timestampB = parseInt(b.split(':').pop());
+                return timestampB - timestampA;
+            });
+
+            // Tomar SOLO la respuesta más reciente
+            const latestResponse = await redis.get(responseKeys[0]);
+            if (latestResponse) {
+                const responseData = JSON.parse(latestResponse);
+                makeResponse = responseData.makeResponse;
+                responseFound = true;
+                
+                // Eliminar la respuesta después de enviarla
+                await redis.del(responseKeys[0]);
+                logger.info(`🗑️ Respuesta eliminada después de enviarla: ${responseKeys[0]}`);
+            }
+        }
+
+        res.status(200).json({
+            processed: allProcessed,
+            makeResponse: makeResponse,
+            responseFound: responseFound
+        });
+    } catch (error) {
+        logger.error('Error verificando estado:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Función para agrupar mensajes por usuario y chatbot
+async function createMessageBundles() {
+    try {
+        // Obtener todas las claves de mensajes no procesados
+        const keys = await redis.keys('message:*');
+        if (keys.length > 0) {
+            logger.info(`🔍 Encontrados ${keys.length} mensajes para procesar`);
+        }
+        // Agrupar mensajes por chatbot_id y user_id
+        const messagesByUserChatbot = {};
+        const currentTime = Date.now();
+        // Ordenar las claves por timestamp
+        keys.sort((a, b) => {
+            const timestampA = parseInt(a.split(':').pop());
+            const timestampB = parseInt(b.split(':').pop());
+            return timestampA - timestampB;
+        });
+        for (const key of keys) {
+            const messageData = await redis.get(key);
+            if (messageData) {
+                const message = JSON.parse(messageData);
+                if (!message.processed && !message.bundled) {
+                    const userId = message.user_id;
+                    const chatbotId = message.chatbot_id;
+                    const userChatbotKey = `${userId}:${chatbotId}`;
+                    const firstMessageTime = message.first_message_time;
+                    const timeElapsed = currentTime - firstMessageTime;
+                    // Solo procesar si han pasado 20 segundos desde el primer mensaje
+                    if (timeElapsed >= 20000) {
+                        if (!messagesByUserChatbot[userChatbotKey]) {
+                            messagesByUserChatbot[userChatbotKey] = {
+                                messages: [],
+                                files: [],
+                                keys: [],
+                                firstMessageTime: firstMessageTime,
+                                userId: userId,
+                                chatbotId: chatbotId
+                            };
+                            logger.info(`👤 Nuevo usuario ${userId} y chatbot ${chatbotId} agregado al bundle`);
+                        }
+                        // Marcar el mensaje como bundled antes de agregarlo
+                        message.bundled = true;
+                        await redis.setex(key, 300, JSON.stringify(message));
+                        messagesByUserChatbot[userChatbotKey].messages.push(message.message);
+                        if (message.file) {
+                            messagesByUserChatbot[userChatbotKey].files.push(message.file);
+                        }
+                        messagesByUserChatbot[userChatbotKey].keys.push(key);
+                    } else {
+                        // NO procesar el bundle hasta que pasen los 20 segundos, aunque solo haya un mensaje
+                        logger.info(`⏳ Esperando ${(Math.max(0, (20000 - timeElapsed))/1000).toFixed(1)} segundos más para el usuario ${userId} y chatbot ${chatbotId}`);
+                    }
+                }
+            }
+        }
+        // Procesar los bundles que han cumplido el tiempo de espera
+        for (const userChatbotKey in messagesByUserChatbot) {
+            const bundle = messagesByUserChatbot[userChatbotKey];
+            if (bundle.messages.length > 0) {
+                logger.info(`📦 Creando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes después de 20 segundos`);
+                try {
+                    // Obtener el webhook URL del chatbot
+                    const webhookUrl = chatbotsConfig[bundle.chatbotId]?.webhook;
+                    if (!webhookUrl) {
+                        logger.error(`⚠️ No se encontró webhook URL para el chatbot ${bundle.chatbotId}`);
+                        continue;
+                    }
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: bundle.userId,
+                            chatbot_id: bundle.chatbotId,
+                            messages: bundle.messages,
+                            files: bundle.files,
+                            bundle_size: bundle.messages.length,
+                            timestamp: new Date().toISOString(),
+                            total_wait_time: (Date.now() - bundle.firstMessageTime) / 1000
+                        })
+                    });
+                    if (response.ok) {
+                        logger.info(`✅ Bundle enviado exitosamente para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
+                        const makeResponse = await response.text();
+                        logger.info(`📩 Respuesta de Make: ${makeResponse}`);
+                        // Verificar si ya existe una respuesta para este usuario y chatbot
+                        const existingResponseKeys = await redis.keys(`response:${bundle.chatbotId}:${bundle.userId}:*`);
+                        if (existingResponseKeys.length > 0) {
+                            // Eliminar respuestas anteriores
+                            for (const key of existingResponseKeys) {
+                                await redis.del(key);
+                                logger.info(`🗑️ Respuesta anterior eliminada: ${key}`);
+                            }
+                        }
+                        // Almacenar UNA SOLA respuesta para todo el bundle
+                        const responseKey = `response:${bundle.chatbotId}:${bundle.userId}:${Date.now()}`;
+                        await redis.setex(responseKey, 300, JSON.stringify({
+                            user_id: bundle.userId,
+                            chatbot_id: bundle.chatbotId,
+                            makeResponse: makeResponse,
+                            timestamp: new Date().toISOString(),
+                            bundle_size: bundle.messages.length
+                        }));
+                        logger.info(`💾 Respuesta almacenada en Redis con clave: ${responseKey}`);
+                        // Eliminar TODOS los mensajes del bundle de Redis inmediatamente
+                        for (const key of bundle.keys) {
+                            await redis.del(key);
+                            logger.info(`🗑️ Mensaje eliminado de Redis: ${key}`);
+                        }
+                        // Limpiar el tiempo del primer mensaje para este usuario y chatbot
+                        userFirstMessageTime.delete(userChatbotKey);
+                        logger.info(`🧹 Tiempo de primer mensaje eliminado para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
+                    } else {
+                        const errorText = await response.text();
+                        logger.error(`⚠️ Error al enviar bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${errorText}`);
+                        // Si hay error, desmarcar los mensajes como bundled
+                        for (const key of bundle.keys) {
+                            const messageData = await redis.get(key);
+                            if (messageData) {
+                                const message = JSON.parse(messageData);
+                                message.bundled = false;
+                                await redis.setex(key, 300, JSON.stringify(message));
+                            }
+                        }
+                    }
+                } catch (error) {
+                    logger.error(`❌ Error procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}:`, error);
+                }
+            }
+        }
+    } catch (error) {
+        logger.error('❌ Error en createMessageBundles:', error);
+    }
+}
+
+// Ejecutar el procesador de bundles cada 5 segundos
+const BUNDLE_INTERVAL = 5000; // 5 segundos para revisar más frecuentemente
+logger.info(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BUNDLE_INTERVAL/1000} segundos`);
+setInterval(createMessageBundles, BUNDLE_INTERVAL);
 
     // Ruta para obtener todos los chatbots
     app.get('/api/chatbots', (req, res) => {
@@ -216,168 +472,13 @@ if (adminPanelEnabled) {
         }
     });
 
-    // Ruta para descargar el archivo chatbots.json
-    app.get('/api/chatbots/download', auth, (req, res) => {
-        const filePath = path.join(__dirname, 'chatbots.json');
-        res.download(filePath, 'chatbots.json', (err) => {
-            if (err) {
-                logger.error('Error al descargar chatbots.json:', err);
-                res.status(500).send('Error al descargar el archivo');
-            }
-        });
-    });
-}
-
-// --- FIN DE RUTAS DEL PANEL DE ADMINISTRACIÓN ---
-
-// Ruta para recibir mensajes
-app.post('/api/messages', upload.single('file'), async (req, res) => {
+// Tarea programada para borrar archivos de Cloudinary diariamente a las 3:00 AM
+cron.schedule('0 3 * * *', async () => {
     try {
-        const { user_id, chatbot_id, message, timestamp } = req.body;
-        const file = req.file;
-
-        // Validar datos requeridos
-        if (!user_id || !chatbot_id || !message) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Faltan datos requeridos' 
-            });
-        }
-
-        // Verificar que el chatbot existe
-        if (!chatbotsConfig[chatbot_id]) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chatbot no encontrado'
-            });
-        }
-
-        // Crear objeto de mensaje
-        const messageData = {
-            user_id,
-            chatbot_id,
-            message,
-            timestamp: timestamp || new Date().toISOString(),
-            file: file ? {
-                url: file.path,
-                type: file.mimetype,
-                size: file.size
-            } : null
-        };
-
-        // Guardar mensaje en Redis
-        const key = `messages:${chatbot_id}:${user_id}`;
-        await redis.lpush(key, JSON.stringify(messageData));
-        
-        // Establecer tiempo de expiración (24 horas)
-        await redis.expire(key, 24 * 60 * 60);
-
-        logger.info('Mensaje guardado en Redis:', messageData);
-
-        // Enviar mensaje a Make.com inmediatamente
-        try {
-            const webhookUrl = chatbotsConfig[chatbot_id].webhook;
-            const makeResponse = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(messageData)
-            });
-
-            if (!makeResponse.ok) {
-                logger.error('Error al enviar mensaje a Make.com:', await makeResponse.text());
-            }
-        } catch (error) {
-            logger.error('Error al enviar mensaje a Make.com:', error);
-        }
-
-        res.json({ 
-            success: true, 
-            message: 'Mensaje recibido correctamente',
-            data: messageData
-        });
+        const result = await cloudinary.api.delete_resources_by_prefix('chatbot-uploads/');
+        logger.info('Archivos de Cloudinary eliminados diariamente:', result);
     } catch (error) {
-        logger.error('Error al procesar mensaje:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Error al procesar el mensaje',
-            details: error.message 
-        });
-    }
-});
-
-// Ruta para verificar el estado de los mensajes
-app.get('/api/messages/status', async (req, res) => {
-    try {
-        const { user_id, chatbot_id } = req.query;
-        
-        if (!user_id || !chatbot_id) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Se requieren user_id y chatbot_id' 
-            });
-        }
-
-        const key = `messages:${chatbot_id}:${user_id}`;
-        const messages = await redis.lrange(key, 0, -1);
-        const parsedMessages = messages.map(msg => JSON.parse(msg));
-
-        res.json({ 
-            success: true, 
-            status: 'ok',
-            message: 'API de mensajes funcionando correctamente',
-            data: {
-                messageCount: parsedMessages.length,
-                messages: parsedMessages
-            }
-        });
-    } catch (error) {
-        logger.error('Error al obtener estado de mensajes:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Error al obtener estado de mensajes',
-            details: error.message 
-        });
-    }
-});
-
-// Endpoint para probar webhooks
-app.post('/api/test-webhook', async (req, res) => {
-    try {
-        const { chatbot_id } = req.body;
-        const chatbot = chatbotsConfig[chatbot_id];
-        
-        if (!chatbot || !chatbot.webhook) {
-            return res.status(404).json({
-                success: false,
-                error: 'Chatbot no encontrado'
-            });
-        }
-
-        const testResponse = await fetch(chatbot.webhook, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                test: true,
-                timestamp: new Date().toISOString()
-            })
-        });
-
-        res.json({
-            success: true,
-            status: testResponse.status,
-            message: 'Webhook probado correctamente'
-        });
-    } catch (error) {
-        logger.error('Error al probar webhook:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Error al probar webhook',
-            details: error.message
-        });
+        logger.error('Error al eliminar archivos de Cloudinary:', error);
     }
 });
 
