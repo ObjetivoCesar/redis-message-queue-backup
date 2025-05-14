@@ -52,7 +52,8 @@ const app = express();
 let server = null;
 
 // Configuración de Redis
-const redis = new Redis();
+const redisUrl = process.env.REDIS_URL || 'redis://default:fu4ErrIRXYbgy6E1ZP5iXOyS0y9F1QjF@redis-18052.c244.us-east-1-2.ec2.redns.redis-cloud.com:18052';
+const redis = new Redis(redisUrl);
 
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
