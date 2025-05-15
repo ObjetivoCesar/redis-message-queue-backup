@@ -351,8 +351,19 @@ async function createMessageBundles() {
                     });
                     if (response.ok) {
                         logger.info(`✅ Bundle enviado exitosamente para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
-                        const makeResponse = await response.text();
-                        logger.info(`📩 Respuesta de Make: ${makeResponse}`);
+                        const rawMakeResponse = await response.text();
+                        logger.info(`📩 Respuesta cruda de Make: ${rawMakeResponse}`);
+                        let makeResponse = rawMakeResponse;
+                        try {
+                            // Intentar parsear como JSON
+                            const parsed = JSON.parse(rawMakeResponse);
+                            if (parsed && typeof parsed === 'object' && parsed.makeResponse) {
+                                makeResponse = parsed.makeResponse;
+                                logger.info(`📝 makeResponse extraído del JSON: ${makeResponse}`);
+                            }
+                        } catch (e) {
+                            logger.info('La respuesta de Make no es JSON, se usará como texto plano.');
+                        }
                         // Verificar si ya existe una respuesta para este usuario y chatbot
                         const existingResponseKeys = await redis.keys(`response:${bundle.chatbotId}:${bundle.userId}:*`);
                         if (existingResponseKeys.length > 0) {
@@ -371,7 +382,7 @@ async function createMessageBundles() {
                             timestamp: new Date().toISOString(),
                             bundle_size: bundle.messages.length
                         }));
-                        logger.info(`💾 Respuesta almacenada en Redis con clave: ${responseKey}`);
+                        logger.info(`💾 Respuesta almacenada en Redis con clave: ${responseKey} y valor: ${makeResponse}`);
                         // Eliminar TODOS los mensajes del bundle de Redis inmediatamente
                         for (const key of bundle.keys) {
                             await redis.del(key);
