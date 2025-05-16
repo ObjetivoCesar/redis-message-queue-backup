@@ -338,6 +338,7 @@ async function createMessageBundles() {
                         logger.error(`⚠️ No se encontró webhook URL para el chatbot ${bundle.chatbotId}`);
                         continue;
                     }
+                    const concatenatedMessage = bundle.messages.map(m => m.text).join('\n');
                     const response = await fetch(webhookUrl, {
                         method: 'POST',
                         headers: {
@@ -346,7 +347,7 @@ async function createMessageBundles() {
                         body: JSON.stringify({
                             user_id: bundle.userId,
                             chatbot_id: bundle.chatbotId,
-                            messages: bundle.messages,  // Ahora es un array de objetos con text, timestamp y order
+                            message: concatenatedMessage,
                             files: bundle.files,
                             bundle_size: bundle.messages.length,
                             timestamp: new Date().toISOString(),
