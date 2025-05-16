@@ -310,7 +310,11 @@ async function createMessageBundles() {
                         // Marcar el mensaje como bundled antes de agregarlo
                         message.bundled = true;
                         await redis.setex(key, 300, JSON.stringify(message));
-                        messagesByUserChatbot[userChatbotKey].messages.push(message.message);
+                        messagesByUserChatbot[userChatbotKey].messages.push({
+                            text: message.message,
+                            timestamp: message.timestamp,
+                            order: messagesByUserChatbot[userChatbotKey].messages.length + 1
+                        });
                         if (message.file) {
                             messagesByUserChatbot[userChatbotKey].files.push(message.file);
                         }
@@ -342,7 +346,7 @@ async function createMessageBundles() {
                         body: JSON.stringify({
                             user_id: bundle.userId,
                             chatbot_id: bundle.chatbotId,
-                            messages: bundle.messages,
+                            messages: bundle.messages,  // Ahora es un array de objetos con text, timestamp y order
                             files: bundle.files,
                             bundle_size: bundle.messages.length,
                             timestamp: new Date().toISOString(),
