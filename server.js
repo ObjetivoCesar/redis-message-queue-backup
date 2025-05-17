@@ -252,6 +252,8 @@ app.get('/api/messages/status', async (req, res) => {
             }
         }
 
+        logger.info(`[STATUS OUT] user_id=${user_id} chatbot_id=${chatbot_id} responseFound=${responseFound} makeResponse=${makeResponse} responseKeys=${JSON.stringify(responseKeys)}`);
+
         res.status(200).json({
             processed: allProcessed,
             makeResponse: makeResponse,
@@ -394,6 +396,9 @@ async function createMessageBundles() {
                         // Limpiar el tiempo del primer mensaje para este usuario y chatbot
                         await redis.del(`first_message_time:${userChatbotKey}`);
                         logger.info(`🧹 Tiempo de primer mensaje eliminado para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
+
+                        logger.info(`[BUNDLE OUT] Procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes. Mensajes: ${JSON.stringify(bundle.messages)}`);
+                        logger.info(`[BUNDLE OUT] Respuesta de Make para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${makeResponse}`);
                     } else {
                         const errorText = await response.text();
                         logger.error(`⚠️ Error al enviar bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${errorText}`);
