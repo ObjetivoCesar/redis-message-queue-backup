@@ -249,10 +249,6 @@ app.get('/api/messages/status', async (req, res) => {
                 const responseData = JSON.parse(latestResponse);
                 makeResponse = responseData.makeResponse;
                 responseFound = true;
-                
-                // Eliminar la respuesta después de enviarla
-                await redis.del(responseKeys[0]);
-                logger.info(`🗑️ Respuesta eliminada después de enviarla: ${responseKeys[0]}`);
             }
         }
 
