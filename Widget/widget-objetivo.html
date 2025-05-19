@@ -3,30 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Widget</title>
+    <title>Chatbot 2 Widget</title>
 </head>
 <body>
+    <!-- =========================================== -->
+    <!-- INICIO DEL CÓDIGO DEL WIDGET DE CHATBOT    -->
+    <!-- =========================================== -->
+
     <!-- Chatbot Widget -->
-    <div id="chatbot-1-container" style="position: fixed !important; bottom: 20px !important; right: 20px !important; z-index: 999999 !important;">
-        <button id="chatbot-1-button" style="width: 56px !important; height: 56px !important; border-radius: 50% !important; background-color: #4CAF50 !important; border: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; transition: background-color 0.2s !important; padding: 0 !important; min-width: unset !important; min-height: unset !important;">
+    <div id="chatbot-2-container" style="position: fixed !important; bottom: 20px !important; right: 20px !important; z-index: 999999 !important;">
+        <button id="chatbot-2-button" style="width: 56px !important; height: 56px !important; border-radius: 50% !important; background-color: #2196F3 !important; border: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; transition: background-color 0.2s !important; padding: 0 !important; min-width: unset !important; min-height: unset !important;">
             <!-- Icono se carga por JS -->
         </button>
 
-        <div id="chatbot-1-window" style="display: none; position: absolute !important; bottom: 80px !important; right: 0 !important; width: 300px !important; height: 580px !important; background-color: white !important; border-radius: 8px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; flex-direction: column !important; overflow: hidden !important;">
-            <div id="chatbot-1-header" style="background-color: #4CAF50 !important; padding: 16px !important; display: flex !important; justify-content: space-between !important; align-items: center !important;">
-                <h2 id="chatbot-1-title" style="margin: 0 !important; color: #ffffff !important; font-size: 12px !important; font-weight: 600 !important;"></h2>
-                <button id="chatbot-1-form-toggle" style="background-color: white !important; color: #4CAF50 !important; border: none !important; padding: 4px 12px !important; border-radius: 4px !important; font-size: 14px !important; cursor: pointer !important; font-family: inherit !important;"></button>
+        <div id="chatbot-2-window" style="display: none; position: absolute !important; bottom: 80px !important; right: 0 !important; width: 300px !important; height: 580px !important; background-color: white !important; border-radius: 8px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; flex-direction: column !important; overflow: hidden !important;">
+            <div id="chatbot-2-header" style="background-color: #2196F3 !important; padding: 16px !important; display: flex !important; justify-content: space-between !important; align-items: center !important;">
+                <h2 id="chatbot-2-title" style="margin: 0 !important; color: #ffffff !important; font-size: 12px !important; font-weight: 600 !important;"></h2>
+                <button id="chatbot-2-form-toggle" style="background-color: white !important; color: #2196F3 !important; border: none !important; padding: 4px 12px !important; border-radius: 4px !important; font-size: 14px !important; cursor: pointer !important; font-family: inherit !important;"></button>
             </div>
 
-            <div id="chatbot-1-chat-container" style="flex-grow: 1 !important; overflow-y: auto !important; padding: 16px !important; display: flex !important; flex-direction: column !important; gap: 16px !important;"></div>
+            <div id="chatbot-2-chat-container" style="flex-grow: 1 !important; overflow-y: auto !important; padding: 16px !important; display: flex !important; flex-direction: column !important; gap: 16px !important;"></div>
 
-            <div id="chatbot-1-form-container" style="display: none; flex-direction: column !important; gap: 16px !important; padding: 16px !important; flex-grow: 1 !important; overflow-y: auto !important; overflow-x: hidden !important;">
-                <input type="text" class="chatbot-1-form-input" id="chatbot-1-name-input" placeholder="Nombre" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
-                <input type="tel" class="chatbot-1-form-input" id="chatbot-1-phone-input" placeholder="Teléfono" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
-                <input type="text" class="chatbot-1-form-input" id="chatbot-1-business-input" placeholder="Nombre del Negocio" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
-                <input type="text" class="chatbot-1-form-input" id="chatbot-1-product-input" placeholder="Producto Estrella" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
-                <textarea class="chatbot-1-form-input" id="chatbot-1-subject-input" placeholder="Ingresa la información de tu actividad económica para el test." style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; resize: none !important; height: 100px !important; font-family: inherit !important; box-sizing: border-box !important;"></textarea>
-                <button id="chatbot-1-form-submit" style="background-color: #4CAF50 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; font-family: inherit !important;"></button>
+            <div id="chatbot-2-form-container" style="display: none; flex-direction: column !important; gap: 16px !important; padding: 16px !important; flex-grow: 1 !important; overflow-y: auto !important; overflow-x: hidden !important;">
+                <input type="text" class="chatbot-2-form-input" id="chatbot-2-name-input" placeholder="Nombre" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
+                <input type="tel" class="chatbot-2-form-input" id="chatbot-2-phone-input" placeholder="Teléfono" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
+                <input type="text" class="chatbot-2-form-input" id="chatbot-2-business-input" placeholder="Nombre del Negocio" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
+                <input type="text" class="chatbot-2-form-input" id="chatbot-2-product-input" placeholder="Producto Estrella" style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important; box-sizing: border-box !important;">
+                <textarea class="chatbot-2-form-input" id="chatbot-2-subject-input" placeholder="Ingresa la información de tu actividad económica para el test." style="width: 100% !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; resize: none !important; height: 100px !important; font-family: inherit !important; box-sizing: border-box !important;"></textarea>
+                <button id="chatbot-2-form-submit" style="background-color: #2196F3 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; font-family: inherit !important;"></button>
                 <div style="text-align: center !important; padding-top: 10px !important;">
                      <p style="margin: 0 !important; font-size: 14px !important;">
                          <strong>Imagina el tiempo que ganarás 🚀</strong>
@@ -34,22 +38,22 @@
                  </div>
             </div>
 
-            <div id="chatbot-1-input-area" style="padding: 16px !important; border-top: 1px solid #e2e8f0 !important; display: flex !important; gap: 8px !important; flex-direction: column !important;">
-                <div id="chatbot-1-file-preview" style="display: none !important; padding: 8px !important; background-color: #f8fafc !important; border-radius: 6px !important; margin-bottom: 8px !important;">
+            <div id="chatbot-2-input-area" style="padding: 16px !important; border-top: 1px solid #e2e8f0 !important; display: flex !important; gap: 8px !important; flex-direction: column !important;">
+                <div id="chatbot-2-file-preview" style="display: none !important; padding: 8px !important; background-color: #f8fafc !important; border-radius: 6px !important; margin-bottom: 8px !important;">
                     <div style="display: flex !important; align-items: center !important; justify-content: space-between !important;">
-                        <span id="chatbot-1-file-name" style="font-size: 14px !important; color: #64748b !important;"></span>
-                        <button id="chatbot-1-remove-file" style="background: none !important; border: none !important; color: #ef4444 !important; cursor: pointer !important; padding: 4px !important;">×</button>
+                        <span id="chatbot-2-file-name" style="font-size: 14px !important; color: #64748b !important;"></span>
+                        <button id="chatbot-2-remove-file" style="background: none !important; border: none !important; color: #ef4444 !important; cursor: pointer !important; padding: 4px !important;">×</button>
                     </div>
                 </div>
                 <div style="display: flex !important; gap: 8px !important;">
-                    <input type="text" id="chatbot-1-message-input" placeholder="Escribe tu mensaje..." style="flex-grow: 1 !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important;">
-                    <input type="file" id="chatbot-1-file-input" accept="image/*,audio/*" style="display: none !important;">
-                    <button id="chatbot-1-attach-button" style="background-color: #4CAF50 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">
+                    <input type="text" id="chatbot-2-message-input" placeholder="Escribe tu mensaje..." style="flex-grow: 1 !important; padding: 8px !important; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; outline: none !important; font-family: inherit !important;">
+                    <input type="file" id="chatbot-2-file-input" accept="image/*,audio/*" style="display: none !important;">
+                    <button id="chatbot-2-attach-button" style="background-color: #2196F3 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style="fill: none !important; stroke: currentColor !important; stroke-width: 2 !important; stroke-linecap: round !important; stroke-linejoin: round !important;">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
                         </svg>
                     </button>
-                    <button id="chatbot-1-send-button" style="background-color: #4CAF50 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">
+                    <button id="chatbot-2-send-button" style="background-color: #2196F3 !important; color: #ffffff !important; border: none !important; padding: 8px !important; border-radius: 6px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style="fill: none !important; stroke: currentColor !important; stroke-width: 2 !important; stroke-linecap: round !important; stroke-linejoin: round !important;">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -60,23 +64,20 @@
         </div>
     </div>
 
-    <script src="https://redis-message-queue-backup.onrender.com/widget/widget-chatbot-1-new.html"></script>
-    <div id="chatbot-1-container"></div>
-
     <script>
     (function() {
         const config = {
-            prefix: 'chatbot-1-',
-            primaryColor: '#4CAF50',
+            prefix: 'chatbot-2-',
+            primaryColor: '#f39017',
             secondaryColor: '#f0f0f0',
             textColorUser: '#fff',
             textColorBot: '#333',
-            chatTitle: 'Chat de Soporte',
+            chatTitle: 'Objetivo',
             formButtonText: 'Formulario de Contacto',
             submitButtonText: 'Enviar',
-            chatbotId: 'chatbot-1',
+            chatbotId: 'chatbot-objetivo',
             chatWebhookUrl: 'https://redis-message-queue-backup.onrender.com/api/messages',
-            initialMessage: "¡Hola! 👋 Soy el Chatbot de Soporte. ¿En qué puedo ayudarte hoy?"
+            initialMessage: "¡Hola! 👋 Soy Ale asistente de Objetivo, ¿En qué puedo ayudarte?"
         };
 
         // Funciones para manejar el historial de chat en localStorage
@@ -248,35 +249,28 @@
         function updateInterface(isLoading = false) {
             if (elements.fileInput && elements.sendButton && elements.attachButton) {
                 const hasFile = elements.fileInput.files.length > 0;
-                const hasMessage = elements.messageInput && elements.messageInput.value.trim().length > 0;
+                const hasMessage = elements.messageInput.value.trim().length > 0;
                 
-                elements.sendButton.disabled = !(hasFile || hasMessage) || isLoading;
-                elements.sendButton.style.opacity = elements.sendButton.disabled ? '0.5' : '1';
-                elements.sendButton.style.cursor = elements.sendButton.disabled ? 'not-allowed' : 'pointer';
-                
+                // Actualizar estado de los botones
+                elements.sendButton.disabled = isLoading || (!hasFile && !hasMessage);
                 elements.attachButton.disabled = isLoading;
-                elements.attachButton.style.opacity = elements.attachButton.disabled ? '0.5' : '1';
-                elements.attachButton.style.cursor = elements.attachButton.disabled ? 'not-allowed' : 'pointer';
+                elements.messageInput.disabled = isLoading;
+                elements.fileInput.disabled = isLoading;
                 
-                if (elements.messageInput) {
-                    elements.messageInput.disabled = isLoading;
-                }
+                // Actualizar estilos según el estado
+                elements.sendButton.style.opacity = (isLoading || (!hasFile && !hasMessage)) ? '0.5' : '1';
+                elements.attachButton.style.opacity = isLoading ? '0.5' : '1';
+                elements.messageInput.style.opacity = isLoading ? '0.5' : '1';
                 
-                if (elements.filePreview) {
-                    elements.filePreview.style.display = hasFile ? 'block' : 'none';
-                }
-                
-                if (elements.fileName && hasFile) {
-                    elements.fileName.textContent = elements.fileInput.files[0].name;
+                // Mostrar/ocultar preview del archivo
+                if (hasFile && !isLoading) {
+                    const file = elements.fileInput.files[0];
+                    elements.filePreview.style.display = 'block';
+                    elements.fileName.textContent = file.name;
+                } else if (!hasFile || isLoading) {
+                    elements.filePreview.style.display = 'none';
                 }
             }
-        }
-
-        // Manejador para el botón de adjuntar archivo
-        if (elements.attachButton) {
-            elements.attachButton.addEventListener('click', () => {
-                elements.fileInput.click();
-            });
         }
 
         // Manejador para el cambio de archivo
@@ -335,6 +329,10 @@
             // Actualizar interfaz después de limpiar inputs
             updateInterface();
 
+            // Crear un div para el visto
+            const responseDiv = document.createElement('div');
+            responseDiv.style.cssText = `max-width: 80% !important; padding: 12px !important; border-radius: 8px !important; word-wrap: break-word !important; white-space: pre-wrap !important; margin: 0 auto 0 0 !important; background-color: ${config.secondaryColor} !important; color: ${config.textColorBot} !important;`;
+            
             try {
                 const response = await fetch(config.chatWebhookUrl, {
                     method: 'POST',
@@ -343,101 +341,98 @@
                 
                 const data = await response.json();
                 if (!response.ok) {
-                    throw new Error(data.error || 'Error en la comunicación');
+                    const errorMessage = `Error: ${response.status} - ${data.error || 'Sin detalles'}`;
+                    responseDiv.textContent = errorMessage;
+                    elements.chatContainer.appendChild(responseDiv);
+                    chatHistory.add(errorMessage, false);
+                    return;
                 }
                 
-                // Mostrar confirmación de envío
-                addMessage("✓ Mensaje enviado", false);
-                
+                // Mostrar el visto
+                responseDiv.textContent = "✓";
+                elements.chatContainer.appendChild(responseDiv);
+                chatHistory.add("✓", false);
+
+                // Iniciar polling para verificar la respuesta de Make
+                let attempts = 0;
+                const maxAttempts = 30; // 30 intentos = 30 segundos
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const statusResponse = await fetch(`${config.chatWebhookUrl}/status?user_id=${userId}&chatbot_id=${config.chatbotId}`);
+                        const statusData = await statusResponse.json();
+                        
+                        if (statusData.processed && statusData.makeResponse) {
+                            // Agregar la respuesta de Make
+                            addMessage(statusData.makeResponse, false);
+                            clearInterval(pollInterval);
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                        }
+                        attempts++;
+                    } catch (error) {
+                        console.error('Error en polling:', error);
+                        clearInterval(pollInterval);
+                    }
+                }, 1000);
+
             } catch (error) {
                 console.error('Error envío:', error);
-                addMessage("❌ Error al enviar el mensaje. Por favor, intenta de nuevo.", false);
+                const errorMessage = 'Error de conexión.';
+                responseDiv.textContent = errorMessage;
+                elements.chatContainer.appendChild(responseDiv);
+                chatHistory.add(errorMessage, false);
             } finally {
+                // Asegurarse de que la interfaz se actualice después de cualquier resultado
                 updateInterface(false);
             }
+            
+            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
         }
 
-        // Manejador para el botón de enviar
-        if (elements.sendButton) {
-            elements.sendButton.addEventListener('click', sendMessage);
-        }
+        if(elements.sendButton) elements.sendButton.addEventListener('click', sendMessage);
+        if(elements.messageInput) elements.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
 
-        // Manejador para la tecla Enter en el input
+        // Agregar manejador para el input de mensaje que mantenga el foco
         if (elements.messageInput) {
-            elements.messageInput.addEventListener('keypress', (e) => {
+            elements.messageInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
+                    // Mantener el foco en el input después de enviar
+                    setTimeout(() => {
+                        elements.messageInput.focus();
+                    }, 0);
                 }
             });
         }
 
-        // Manejador para el formulario
-        if (elements.formSubmit) {
-            elements.formSubmit.addEventListener('click', async () => {
-                const formData = {
-                    name: elements.nameInput.value,
-                    phone: elements.phoneInput.value,
-                    business: elements.businessInput.value,
-                    product: elements.productInput.value,
-                    subject: elements.subjectInput.value
-                };
-
-                // Validar campos requeridos
-                if (!formData.name || !formData.phone || !formData.business || !formData.product || !formData.subject) {
-                    addMessage("Por favor, completa todos los campos del formulario.", false);
-                    return;
-                }
-
-                // Actualizar interfaz a estado de carga
-                updateInterface(true);
-
-                try {
-                    const response = await fetch(config.chatWebhookUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            user_id: userId,
-                            chatbot_id: config.chatbotId,
-                            message: `Formulario de contacto:\nNombre: ${formData.name}\nTeléfono: ${formData.phone}\nNegocio: ${formData.business}\nProducto: ${formData.product}\nMensaje: ${formData.subject}`,
-                            timestamp: new Date().toISOString()
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.error || 'Error en la comunicación');
-                    }
-
-                    // Limpiar formulario
-                    elements.nameInput.value = '';
-                    elements.phoneInput.value = '';
-                    elements.businessInput.value = '';
-                    elements.productInput.value = '';
-                    elements.subjectInput.value = '';
-
-                    // Mostrar mensaje de éxito
-                    addMessage("¡Gracias por contactarnos! Te responderemos pronto.", false);
-
-                    // Volver a la vista del chat
-                    elements.formContainer.style.display = 'none';
-                    elements.chatContainer.style.display = 'flex';
-                    elements.inputArea.style.display = 'flex';
-
-                } catch (error) {
-                    console.error('Error envío formulario:', error);
-                    addMessage("❌ Error al enviar el formulario. Por favor, intenta de nuevo.", false);
-                } finally {
-                    updateInterface(false);
-                }
+        // Agregar manejador para el botón de adjuntar archivo
+        if (elements.attachButton) {
+            elements.attachButton.addEventListener('click', () => {
+                elements.fileInput.click();
             });
         }
 
-        // Inicializar la interfaz
-        updateInterface();
+        // Busca el div del footer y aplica el color principal
+        if (elements.formContainer) {
+            const footerDiv = elements.formContainer.querySelector('div[style*="text-align: center"]');
+            if (footerDiv) {
+                footerDiv.style.backgroundColor = config.primaryColor;
+                footerDiv.style.color = '#fff'; // Contraste
+                footerDiv.style.borderRadius = '0 0 8px 8px';
+                footerDiv.style.margin = '-16px -16px 0 -16px';
+                footerDiv.style.padding = '10px 0';
+            }
+        }
     })();
     </script>
+    <!-- =========================================== -->
+    <!-- FIN DEL CÓDIGO DEL WIDGET DE CHATBOT       -->
+    <!-- =========================================== -->
 </body>
 </html> 
