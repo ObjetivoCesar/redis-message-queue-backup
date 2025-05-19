@@ -430,6 +430,9 @@ async function createMessageBundles() {
 // Ejecutar el procesador de bundles cada 5 segundos
 const BUNDLE_INTERVAL = 5000; // 5 segundos para revisar más frecuentemente
 logger.info(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BUNDLE_INTERVAL/1000} segundos`);
+
+// Antes de registrar el setInterval para createMessageBundles:
+logger.info('[BUNDLE DEBUG] Registrando setInterval para createMessageBundles...');
 setInterval(createMessageBundles, BUNDLE_INTERVAL);
 
     // Ruta para obtener todos los chatbots
