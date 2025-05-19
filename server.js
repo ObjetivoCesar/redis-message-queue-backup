@@ -433,7 +433,8 @@ logger.info(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BU
 
 // Antes de registrar el setInterval para createMessageBundles:
 logger.info('[BUNDLE DEBUG] Registrando setInterval para createMessageBundles...');
-setInterval(createMessageBundles, BUNDLE_INTERVAL);
+const intervalId = setInterval(createMessageBundles, BUNDLE_INTERVAL);
+logger.info(`[BUNDLE DEBUG] setInterval registrado con ID: ${intervalId}. Se ejecutará cada ${BUNDLE_INTERVAL/1000} segundos.`);
 
     // Ruta para obtener todos los chatbots
     app.get('/api/chatbots', (req, res) => {
