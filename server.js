@@ -267,9 +267,14 @@ app.get('/api/messages/status', async (req, res) => {
 
 // Función para agrupar mensajes por usuario y chatbot
 async function createMessageBundles() {
+    logger.info('[BUNDLE DEBUG] Ejecutando createMessageBundles...');
     try {
         // Obtener todas las claves de mensajes no procesados
         const keys = await redis.keys('message:*');
+        if (keys.length === 0) {
+            logger.info('[BUNDLE DEBUG] No hay mensajes para procesar en este ciclo.');
+            return;
+        }
         if (keys.length > 0) {
             logger.info(`🔍 Encontrados ${keys.length} mensajes para procesar`);
         }
