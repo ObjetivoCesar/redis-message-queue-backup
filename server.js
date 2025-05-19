@@ -1,4 +1,4 @@
-console.log('=== INICIANDO SERVER.JS ===', __filename, new Date().toISOString());
+console.log('=== INICIO REAL DEL ARCHIVO SERVER.JS ===', __filename, new Date().toISOString());
 const express = require('express');
 const Redis = require('ioredis');
 const cors = require('cors');
@@ -265,7 +265,7 @@ app.get('/api/messages/status', async (req, res) => {
     }
 });
 
-// Función para agrupar mensajes por usuario y chatbot
+logger.info('[BUNDLE DEBUG] Definiendo createMessageBundles...');
 async function createMessageBundles() {
     logger.info('[BUNDLE DEBUG] Ejecutando createMessageBundles...');
     try {
