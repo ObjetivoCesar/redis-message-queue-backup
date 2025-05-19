@@ -265,18 +265,18 @@ app.get('/api/messages/status', async (req, res) => {
     }
 });
 
-logger.info('[BUNDLE DEBUG] Definiendo createMessageBundles...');
+console.log('[BUNDLE DEBUG] Definiendo createMessageBundles...');
 async function createMessageBundles() {
-    logger.info('[BUNDLE DEBUG] Ejecutando createMessageBundles...');
+    console.log('[BUNDLE DEBUG] Ejecutando createMessageBundles...');
     try {
         // Obtener todas las claves de mensajes no procesados
         const keys = await redis.keys('message:*');
         if (keys.length === 0) {
-            logger.info('[BUNDLE DEBUG] No hay mensajes para procesar en este ciclo.');
+            console.log('[BUNDLE DEBUG] No hay mensajes para procesar en este ciclo.');
             return;
         }
         if (keys.length > 0) {
-            logger.info(`🔍 Encontrados ${keys.length} mensajes para procesar`);
+            console.log(`🔍 Encontrados ${keys.length} mensajes para procesar`);
         }
         // Agrupar mensajes por chatbot_id y user_id
         const messagesByUserChatbot = {};
@@ -291,7 +291,7 @@ async function createMessageBundles() {
             const messageData = await redis.get(key);
             if (messageData) {
                 const message = JSON.parse(messageData);
-                logger.info(`[BUNDLE DEBUG] Analizando mensaje: ${key} bundled=${message.bundled} processed=${message.processed} first_message_time=${message.first_message_time}`);
+                console.log(`[BUNDLE DEBUG] Analizando mensaje: ${key} bundled=${message.bundled} processed=${message.processed} first_message_time=${message.first_message_time}`);
                 if (!message.processed && !message.bundled) {
                     const userId = message.user_id;
                     const chatbotId = message.chatbot_id;
@@ -309,7 +309,7 @@ async function createMessageBundles() {
                                 userId: userId,
                                 chatbotId: chatbotId
                             };
-                            logger.info(`👤 Nuevo usuario ${userId} y chatbot ${chatbotId} agregado al bundle`);
+                            console.log(`👤 Nuevo usuario ${userId} y chatbot ${chatbotId} agregado al bundle`);
                         }
                         // Marcar el mensaje como bundled justo antes de enviarlo
                         message.bundled = true;
@@ -324,10 +324,10 @@ async function createMessageBundles() {
                         }
                         messagesByUserChatbot[userChatbotKey].keys.push(key);
                     } else {
-                        logger.info(`[BUNDLE DEBUG] No se procesa bundle para ${userId}:${chatbotId} porque solo han pasado ${(timeElapsed/1000).toFixed(1)} segundos (faltan ${(20 - timeElapsed/1000).toFixed(1)}s)`);
+                        console.log(`[BUNDLE DEBUG] No se procesa bundle para ${userId}:${chatbotId} porque solo han pasado ${(timeElapsed/1000).toFixed(1)} segundos (faltan ${(20 - timeElapsed/1000).toFixed(1)}s)`);
                     }
                 } else {
-                    logger.info(`[BUNDLE DEBUG] Mensaje ya procesado o bundleado: ${key}`);
+                    console.log(`[BUNDLE DEBUG] Mensaje ya procesado o bundleado: ${key}`);
                 }
             }
         }
@@ -335,12 +335,12 @@ async function createMessageBundles() {
         for (const userChatbotKey in messagesByUserChatbot) {
             const bundle = messagesByUserChatbot[userChatbotKey];
             if (bundle.messages.length > 0) {
-                logger.info(`📦 Creando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes después de 20 segundos`);
+                console.log(`📦 Creando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes después de 20 segundos`);
                 try {
                     // Obtener el webhook URL del chatbot
                     const webhookUrl = chatbotsConfig[bundle.chatbotId]?.webhook;
                     if (!webhookUrl) {
-                        logger.error(`⚠️ No se encontró webhook URL para el chatbot ${bundle.chatbotId}`);
+                        console.error(`⚠️ No se encontró webhook URL para el chatbot ${bundle.chatbotId}`);
                         continue;
                     }
                     const concatenatedMessage = bundle.messages.map(m => m.text).join('\n');
@@ -360,19 +360,19 @@ async function createMessageBundles() {
                         })
                     });
                     if (response.ok) {
-                        logger.info(`✅ Bundle enviado exitosamente para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
+                        console.log(`✅ Bundle enviado exitosamente para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
                         const rawMakeResponse = await response.text();
-                        logger.info(`📩 Respuesta cruda de Make: ${rawMakeResponse}`);
+                        console.log(`📩 Respuesta cruda de Make: ${rawMakeResponse}`);
                         let makeResponse = rawMakeResponse;
                         try {
                             // Intentar parsear como JSON
                             const parsed = JSON.parse(rawMakeResponse);
                             if (parsed && typeof parsed === 'object' && parsed.makeResponse) {
                                 makeResponse = parsed.makeResponse;
-                                logger.info(`📝 makeResponse extraído del JSON: ${makeResponse}`);
+                                console.log(`📝 makeResponse extraído del JSON: ${makeResponse}`);
                             }
                         } catch (e) {
-                            logger.info('La respuesta de Make no es JSON, se usará como texto plano.');
+                            console.log('La respuesta de Make no es JSON, se usará como texto plano.');
                         }
                         // Verificar si ya existe una respuesta para este usuario y chatbot
                         const existingResponseKeys = await redis.keys(`response:${bundle.chatbotId}:${bundle.userId}:*`);
@@ -380,7 +380,7 @@ async function createMessageBundles() {
                             // Eliminar respuestas anteriores
                             for (const key of existingResponseKeys) {
                                 await redis.del(key);
-                                logger.info(`🗑️ Respuesta anterior eliminada: ${key}`);
+                                console.log(`🗑️ Respuesta anterior eliminada: ${key}`);
                             }
                         }
                         // Almacenar UNA SOLA respuesta para todo el bundle
@@ -392,21 +392,21 @@ async function createMessageBundles() {
                             timestamp: new Date().toISOString(),
                             bundle_size: bundle.messages.length
                         }));
-                        logger.info(`💾 Respuesta almacenada en Redis con clave: ${responseKey} y valor: ${makeResponse}`);
+                        console.log(`💾 Respuesta almacenada en Redis con clave: ${responseKey} y valor: ${makeResponse}`);
                         // Eliminar TODOS los mensajes del bundle de Redis inmediatamente
                         for (const key of bundle.keys) {
                             await redis.del(key);
-                            logger.info(`🗑️ Mensaje eliminado de Redis: ${key}`);
+                            console.log(`🗑️ Mensaje eliminado de Redis: ${key}`);
                         }
                         // Limpiar el tiempo del primer mensaje para este usuario y chatbot
                         await redis.del(`first_message_time:${userChatbotKey}`);
-                        logger.info(`🧹 Tiempo de primer mensaje eliminado para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
+                        console.log(`🧹 Tiempo de primer mensaje eliminado para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}`);
 
-                        logger.info(`[BUNDLE OUT] Procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes. Mensajes: ${JSON.stringify(bundle.messages)}`);
-                        logger.info(`[BUNDLE OUT] Respuesta de Make para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${makeResponse}`);
+                        console.log(`[BUNDLE OUT] Procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId} con ${bundle.messages.length} mensajes. Mensajes: ${JSON.stringify(bundle.messages)}`);
+                        console.log(`[BUNDLE OUT] Respuesta de Make para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${makeResponse}`);
                     } else {
                         const errorText = await response.text();
-                        logger.error(`⚠️ Error al enviar bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${errorText}`);
+                        console.error(`⚠️ Error al enviar bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}: ${errorText}`);
                         // Si hay error, desmarcar los mensajes como bundled
                         for (const key of bundle.keys) {
                             const messageData = await redis.get(key);
@@ -418,23 +418,23 @@ async function createMessageBundles() {
                         }
                     }
                 } catch (error) {
-                    logger.error(`❌ Error procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}:`, error);
+                    console.error(`❌ Error procesando bundle para usuario ${bundle.userId} y chatbot ${bundle.chatbotId}:`, error);
                 }
             }
         }
     } catch (error) {
-        logger.error('❌ Error en createMessageBundles:', error);
+        console.error('❌ Error en createMessageBundles:', error);
     }
 }
 
 // Ejecutar el procesador de bundles cada 5 segundos
 const BUNDLE_INTERVAL = 5000; // 5 segundos para revisar más frecuentemente
-logger.info(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BUNDLE_INTERVAL/1000} segundos`);
+console.log(`⚙️ Configurando procesador de bundles para ejecutarse cada ${BUNDLE_INTERVAL/1000} segundos`);
 
 // Antes de registrar el setInterval para createMessageBundles:
-logger.info('[BUNDLE DEBUG] Registrando setInterval para createMessageBundles...');
+console.log('[BUNDLE DEBUG] Registrando setInterval para createMessageBundles...');
 const intervalId = setInterval(createMessageBundles, BUNDLE_INTERVAL);
-logger.info(`[BUNDLE DEBUG] setInterval registrado con ID: ${intervalId}. Se ejecutará cada ${BUNDLE_INTERVAL/1000} segundos.`);
+console.log(`[BUNDLE DEBUG] setInterval registrado con ID: ${intervalId}. Se ejecutará cada ${BUNDLE_INTERVAL/1000} segundos.`);
 
     // Ruta para obtener todos los chatbots
     app.get('/api/chatbots', (req, res) => {
