@@ -17,6 +17,35 @@ const redis = new Redis();
 // Cargar configuración de chatbots
 const chatbotsConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'chatbots.json'), 'utf8'));
 
+// Configuración de Multer para manejo de archivos
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'uploads';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir);
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // límite de 10MB
+    },
+    fileFilter: function (req, file, cb) {
+        // Permitir solo imágenes y audio
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten archivos de imagen y audio'));
+        }
+    }
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
